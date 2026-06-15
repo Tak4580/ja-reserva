@@ -86,6 +86,7 @@ function getSettings(){
 
   if(!s.branchEmails) s.branchEmails = {};
   if(!s.branchPhones) s.branchPhones = {};
+  if(!s.branchGroups) s.branchGroups = [];
   return s;
 }
 function setSettings(v){localStorage.setItem("inheritanceSettings",JSON.stringify(v))}
@@ -135,10 +136,13 @@ function isBookableDate(dateStr){
   return true;
 }
 function isTimeUnavailable(branch,date,time, excludeId=null){
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(branch)) || [branch];
+
   const start=minutes(time);
-  const reservations=getReservations().filter(r=>r.branch===branch&&r.date===date&&r.status!=="キャンセル"&&r.id!==excludeId);
+  const reservations=getReservations().filter(r=>group.includes(r.branch)&&r.date===date&&r.status!=="キャンセル"&&r.id!==excludeId);
   if(reservations.some(r=>overlaps(start,90,minutes(r.time),90)))return true;
-  const blocks=getBlocks().filter(b=>b.branch===branch&&b.date===date);
+  const blocks=getBlocks().filter(b=>group.includes(b.branch)&&b.date===date);
   if(blocks.some(b=>overlaps(start,90,minutes(b.start),Number(b.duration||30))))return true;
   return false;
 }
@@ -495,9 +499,12 @@ function renderCalendar(){
   const todayIso=formatDateISO(today);
   const currentMonthStart=new Date(today.getFullYear(),today.getMonth(),1);
 
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(state.branch)) || [state.branch];
+
   // 予約とブロックを一括取得（カレンダー表示の高速化）
-  const allRes = getReservations().filter(r => r.branch === state.branch && r.status !== "キャンセル" && r.id !== state.editingId);
-  const allBlk = getBlocks().filter(b => b.branch === state.branch);
+  const allRes = getReservations().filter(r => group.includes(r.branch) && r.status !== "キャンセル" && r.id !== state.editingId);
+  const allBlk = getBlocks().filter(b => group.includes(b.branch));
   const isTimeUnavailableLocal = (date, time) => {
     const start = minutes(time);
     if(allRes.some(r => r.date === date && overlaps(start, 90, minutes(r.time), 90))) return true;
@@ -632,12 +639,15 @@ function renderAdminReservationCalendar() {
   const today = new Date(); today.setHours(0,0,0,0);
   const todayIso = formatDateISO(today);
 
+  const settings = getSettings();
+  const currentBranch = window._fb;
+  const group = currentBranch ? (settings.branchGroups?.find(g => g.includes(currentBranch)) || [currentBranch]) : null;
+
   const reservationsInMonth = getReservations().filter(r => {
-    if(window._fb && r.branch !== window._fb) return false;
+    if (group && !group.includes(r.branch)) return false;
     if(r.status === "キャンセル") return false;
     return true;
   });
-
   const headerMonthLabel = document.getElementById('headerMonthLabel');
   if(headerMonthLabel) headerMonthLabel.textContent = `${y}年${mo+1}月`;
 
@@ -778,7 +788,14 @@ function saveAdminMemo(id) {
 }
 
 function renderReservations(el){
-  let allList = getReservations().filter(r => !window._fb || r.branch === window._fb);
+  const settings = getSettings();
+  const currentBranch = window._fb;
+  const group = currentBranch ? (settings.branchGroups?.find(g => g.includes(currentBranch)) || [currentBranch]) : null;
+
+  let allList = getReservations();
+  if (group) {
+    allList = allList.filter(r => group.includes(r.branch));
+  }
   
   // 旧バージョンのデータ互換性
   allList.forEach(r => { 
@@ -790,38 +807,22 @@ function renderReservations(el){
   const countUnread = allList.filter(r => r.status === "未確認").length;
   const countDoing = allList.filter(r => r.status === "準備中").length;
   const countDone = allList.filter(r => r.status === "来店済").length;
-  const assigneesObj = getSettings().assignees || { "すべて": [] };
+  const assigneesObj = settings.assignees || { "すべて": [] };
+
+  let groupInfoHtml = "";
+  if (currentBranch) {
+    const foundGroup = settings.branchGroups?.find(g => g.includes(currentBranch));
+    if (foundGroup && foundGroup.length > 1) {
+      const otherBranches = foundGroup.filter(b => b !== currentBranch).join("、 ");
+      groupInfoHtml = `<p class="section-lead" style="margin-top:4px;margin-bottom:0;font-size:12px;color:var(--brand-dark)">※<strong>${esc(currentBranch)}</strong>は、<strong>${esc(otherBranches)}</strong>と予約枠を共有しています。</p>`;
+    }
+  }
 
   const list = allList.filter(r => r.status === adminTabStatus).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const isVertical = adminCalendarLayout === "vertical";
 
-  el.innerHTML=`
-    ${isVertical ? "" : `
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:18px">
-      <div>
-        <h2 class="section-title" style="margin-bottom:0">予約一覧</h2>
-        <p class="section-lead" style="margin-top:4px;margin-bottom:0">全支店の予約を確認できます。</p>
-      </div>
-      <div class="toolbar" style="margin-bottom:0">
-        <label>支店<select id="filterBranch" onchange="window._fb=this.value;renderAdmin()"><option value="">すべて</option>${BRANCHES.map(x=>`<option value="${x}" ${window._fb===x?"selected":""}>${x}</option>`).join("")}</select></label>
-        <button class="btn secondary toggle-layout-btn" onclick="toggleCalendarLayout()">拡大表示</button>
-      </div>
-    </div>
-    `}
-    
-    <div class="admin-reservations-layout ${adminCalendarLayout}">
-      <div>
-        ${renderAdminReservationCalendar()}
-      </div>
-      <div>
-        <div class="status-tabs">
-          <button class="status-tab ${adminTabStatus==="未確認"?"active":""}" data-status="未確認" onclick="adminTabStatus='未確認';renderAdmin()">未確認 <span class="status-badge">${countUnread}</span></button>
-          <button class="status-tab ${adminTabStatus==="準備中"?"active":""}" data-status="準備中" onclick="adminTabStatus='準備中';renderAdmin()">準備中 <span class="status-badge">${countDoing}</span></button>
-          <button class="status-tab ${adminTabStatus==="来店済"?"active":""}" data-status="来店済" onclick="adminTabStatus='来店済';renderAdmin()">来店済 <span class="status-badge">${countDone}</span></button>
-        </div>
-        <div class="table-wrap"><table>
-      <thead><tr><th>日時</th><th>支店</th><th>氏名</th><th>状態</th><th></th></tr></thead>
-      <tbody>${list.length?list.map(r=>`
+  const generateTableHtml = (targetList, title, emptyMessage) => {
+    const rowsHtml = targetList.length ? targetList.map(r=>`
         <tr class="accordion-trigger ${!r.assignee?'no-assignee':''}" onclick="toggleAccordion('${r.id}')">
           <td>${jpDate(r.date)}<br><strong>${r.time}～${endTime(r.time)}</strong></td>
           <td>${r.branch}<br><span id="assignee-label-${r.id}" class="assignee-label">担当: ${esc(r.assignee||"未設定")}</span></td>
@@ -902,8 +903,56 @@ function renderReservations(el){
               </div>
             </div>
           </td>
-        </tr>`).join(""):`<tr><td colspan="5">予約はまだありません。</td></tr>`}</tbody>
-    </table></div>
+        </tr>`).join("") : `<tr><td colspan="5">${emptyMessage || "予約はまだありません。"}</td></tr>`;
+    
+    return `
+      ${title ? `<h3 style="font-size:14px; margin:24px 0 10px 0; color:var(--text);">${title}</h3>` : ""}
+      <div class="table-wrap" ${title ? 'style="margin-bottom:24px"' : ''}>
+        <table>
+          <thead><tr><th>日時</th><th>支店</th><th>氏名</th><th>状態</th><th></th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  let tablesHtml = "";
+  if (currentBranch && group && group.length > 1) {
+    const mainList = list.filter(r => r.branch === currentBranch);
+    const otherList = list.filter(r => r.branch !== currentBranch);
+    const otherBranches = group.filter(b => b !== currentBranch).join("、");
+    tablesHtml = generateTableHtml(mainList, "", `${esc(currentBranch)}の予約はまだありません。`) + generateTableHtml(otherList, `連携する支店（${esc(otherBranches)}）の予約`, `${esc(otherBranches)}の予約はまだありません。`);
+  } else {
+    tablesHtml = generateTableHtml(list, "", "予約はまだありません。");
+  }
+
+  el.innerHTML=`
+    ${isVertical ? "" : `
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:18px">
+      <div>
+        <h2 class="section-title" style="margin-bottom:0">予約一覧</h2>
+        ${groupInfoHtml ? groupInfoHtml : `<p class="section-lead" style="margin-top:4px;margin-bottom:0">${currentBranch ? esc(currentBranch) + 'の予約を確認できます。' : '全支店の予約を確認できます。'}</p>`}
+      </div>
+      <div class="toolbar" style="margin-bottom:0">
+        <label>支店<select id="filterBranch" onchange="window._fb=this.value;renderAdmin()"><option value="">すべて</option>${BRANCHES.map(x=>`<option value="${x}" ${window._fb===x?"selected":""}>${x}</option>`).join("")}</select></label>
+        <button class="btn secondary toggle-layout-btn" onclick="toggleCalendarLayout()">拡大表示</button>
+      </div>
+    </div>
+    `}
+    
+    <div class="admin-reservations-layout ${adminCalendarLayout}">
+      <div>
+        ${renderAdminReservationCalendar()}
+      </div>
+      <div>
+        <div class="status-tabs">
+          <button class="status-tab ${adminTabStatus==="未確認"?"active":""}" data-status="未確認" onclick="adminTabStatus='未確認';renderAdmin()">未確認 <span class="status-badge">${countUnread}</span></button>
+          <button class="status-tab ${adminTabStatus==="準備中"?"active":""}" data-status="準備中" onclick="adminTabStatus='準備中';renderAdmin()">準備中 <span class="status-badge">${countDoing}</span></button>
+          <button class="status-tab ${adminTabStatus==="来店済"?"active":""}" data-status="来店済" onclick="adminTabStatus='来店済';renderAdmin()">来店済 <span class="status-badge">${countDone}</span></button>
+        </div>
+        <div>
+          ${tablesHtml}
+        </div>
       </div>
     </div>`;
 }
@@ -998,8 +1047,11 @@ function renderBlocks(el){
   const y = m.getFullYear(), mo = m.getMonth();
   const first = new Date(y, mo, 1), last = new Date(y, mo + 1, 0);
   
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(branch)) || [branch];
+
   const allBlocks = getBlocks();
-  const branchBlocks = allBlocks.filter(b => b.branch === branch);
+  const branchBlocks = allBlocks.filter(b => group.includes(b.branch));
   
   const today = new Date(); today.setHours(0,0,0,0);
   const todayIso = formatDateISO(today);
@@ -1046,7 +1098,7 @@ function renderBlocks(el){
   const selBlocks = branchBlocks.filter(b => b.date === adminBlockState.date);
   const isAllDay = ADMIN_TIME_SLOTS.every(t => selBlocks.some(b => b.start === t));
   
-  const reservations = getReservations().filter(r => r.branch === branch && r.date === adminBlockState.date && r.status !== "キャンセル");
+  const reservations = getReservations().filter(r => group.includes(r.branch) && r.date === adminBlockState.date && r.status !== "キャンセル");
 
   const slotsHtml = ADMIN_TIME_SLOTS.map(t => {
     const isBlocked = selBlocks.some(b => b.start === t);
@@ -1130,9 +1182,12 @@ function moveAdminBlockMonth(n) {
 function setBlockPreset(type) {
   const { branch, date } = adminBlockState;
   let allBlocks = getBlocks();
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(branch)) || [branch];
+
   const ADMIN_TIME_SLOTS = ["09:00","09:30","10:00","10:30","11:00","11:30","12:30","13:00","13:30","14:00","14:30","15:00"];
   
-  allBlocks = allBlocks.filter(b => !(b.branch === branch && b.date === date));
+  allBlocks = allBlocks.filter(b => !(group.includes(b.branch) && b.date === date));
   
   let slotsToAdd = [];
   if (type === 'am') slotsToAdd = ADMIN_TIME_SLOTS.filter(t => t < "12:00");
@@ -1151,8 +1206,10 @@ let dragAction = "";
 function startDragBlock(e, time) {
   isDraggingBlock = true;
   const { branch, date } = adminBlockState;
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(branch)) || [branch];
   const allBlocks = getBlocks();
-  const isBlocked = allBlocks.some(b => b.branch === branch && b.date === date && b.start === time);
+  const isBlocked = allBlocks.some(b => group.includes(b.branch) && b.date === date && b.start === time);
   dragAction = isBlocked ? "remove" : "add";
   applyDragBlock(time);
 }
@@ -1162,7 +1219,10 @@ function enterDragBlock(e, time) {
 function applyDragBlock(time) {
   const { branch, date } = adminBlockState;
   let allBlocks = getBlocks();
-  const targetIndex = allBlocks.findIndex(b => b.branch === branch && b.date === date && b.start === time);
+  const settings = getSettings();
+  const group = settings.branchGroups?.find(g => g.includes(branch)) || [branch];
+
+  const targetIndex = allBlocks.findIndex(b => group.includes(b.branch) && b.date === date && b.start === time);
   let changed = false;
   if (dragAction === "add" && targetIndex < 0) {
     allBlocks.push({ branch, date, start: time, duration: 30 });
@@ -1208,6 +1268,7 @@ function renderSettings(el){
   const s=getSettings();
   const currentBranch = window._settingsBranch || "すべて";
   const branchList = ["すべて", ...BRANCHES];
+  const branchGroupsStr = (s.branchGroups || []).map(g => g.join(",")).join("\n");
 
   const assigneesHtml = BRANCHES.map(b => {
     const list = s.assignees[b] || [];
@@ -1270,6 +1331,12 @@ function renderSettings(el){
       </label>
     </div>
     <div class="grid" style="margin-top:18px;background:#f9fafb;padding:20px;border-radius:12px;border:1px solid var(--line)">
+    <label style="margin-bottom:0;font-size:15px;color:var(--brand)">連携する支店グループ</label>
+    <span class="muted" style="font-size:12px;font-weight:normal;display:block;margin-bottom:8px">※予約枠を共有（連動）させる支店がある場合、1行に1グループずつカンマ区切りで入力してください。（例：頓原支店,雲南吉田支店,掛合支店）</span>
+    <textarea id="branchGroups" style="width:100%;height:60px;padding:10px;margin-bottom:20px;border-color:var(--brand);box-shadow:0 2px 8px rgba(0,168,89,.1)" placeholder="例：頓原支店,雲南吉田支店,掛合支店">${esc(branchGroupsStr)}</textarea>
+    
+    <div style="border-top:1px solid var(--line);margin:0 0 20px 0"></div>
+
       <label style="margin-bottom:0;font-size:15px;color:var(--brand)">対象支店</label>
       <select id="settingsBranchSelect" onchange="changeSettingsBranch(this.value)" style="width:100%;max-width:300px;padding:10px;margin-bottom:4px;border-color:var(--brand);box-shadow:0 2px 8px rgba(0,168,89,.1)">
         ${branchList.map(b => `<option value="${b}" ${b===currentBranch?"selected":""}>${b==="すべて"?"すべて（共通）":b}</option>`).join("")}
@@ -1362,11 +1429,19 @@ function saveAdminSettings(){
     const pl = document.getElementById("phone_" + b);
     if(pl) branchPhones[b] = pl.value.trim();
   });
+
+  const branchGroupsRaw = document.getElementById("branchGroups").value.trim();
+  const branchGroups = branchGroupsRaw 
+    ? branchGroupsRaw.split("\n").map(line => line.split("、").join(",").split(",").map(b => b.trim()).filter(b => BRANCHES.includes(b))) 
+    : [];
+  const validBranchGroups = branchGroups.filter(g => g.length > 1);
+
   setSettings({
     daysAhead:Number(document.getElementById("daysAhead").value),
     assignees: assigneesObj,
     branchEmails: branchEmails,
-    branchPhones: branchPhones
+    branchPhones: branchPhones,
+    branchGroups: validBranchGroups
   });
   alert("設定を保存しました。");renderAdmin();renderBooking();
 }
