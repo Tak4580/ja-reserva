@@ -11,25 +11,26 @@
 <header>
   <div class="header-inner">
     <div class="brand">
-      <div class="logo">JA</div>
-      <div>
+      <div class="logo" aria-hidden="true"><span>JA</span></div>
+      <div class="brand-copy">
+        <span class="brand-kicker">JAしまね</span>
         <h1>相続相談 来店予約</h1>
-        <small>LINE連携対応 初期版</small>
+        <small>専門スタッフへのご相談を、かんたん予約</small>
       </div>
     </div>
     <div id="headerMonthControls" class="header-month-controls">
-      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:16px; line-height:1;" onclick="moveAdminReservationMonth(-1)">‹</button>
-      <strong id="headerMonthLabel" style="font-size:16px;"></strong>
-      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:16px; line-height:1;" onclick="moveAdminReservationMonth(1)">›</button>
-      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:13px; line-height:1.2; margin-left:8px;" onclick="resetAdminReservationMonth()">今日に戻る</button>
+      <button class="btn secondary compact-btn" onclick="moveAdminReservationMonth(-1)" aria-label="前の月">‹</button>
+      <strong id="headerMonthLabel"></strong>
+      <button class="btn secondary compact-btn" onclick="moveAdminReservationMonth(1)" aria-label="次の月">›</button>
+      <button class="btn secondary compact-btn today-btn" onclick="resetAdminReservationMonth()">今日に戻る</button>
     </div>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div id="calendarLargeControls" style="display:none; align-items:center; gap:10px;">
-        <label style="margin:0; font-size:13px; display:flex; align-items:center; gap:6px; font-weight:700;">支店
-          <select id="headerFilterBranch" onchange="window._fb=this.value;renderAdmin()" style="padding:6px 10px; font-size:13px; border-radius:6px; min-height:auto; border:1px solid var(--line); background:#fff;">
+    <div class="header-actions">
+      <div id="calendarLargeControls" class="calendar-large-controls">
+        <label>支店
+          <select id="headerFilterBranch" onchange="window._fb=this.value;renderAdmin()">
           </select>
         </label>
-        <button class="btn secondary" style="padding:6px 12px; font-size:12px; border-radius:6px;" onclick="toggleCalendarLayout()">横並び表示にする</button>
+        <button class="btn secondary compact-btn" onclick="toggleCalendarLayout()">横並び表示にする</button>
       </div>
       <div class="mode-switch" id="mainModeSwitch">
         <button id="userModeBtn" class="active">予約画面</button>
@@ -43,9 +44,15 @@
 <section id="userApp">
   <div class="booking-wrap">
     <aside class="panel side">
+      <span class="side-kicker">相続のご相談</span>
       <h2>相続相談のご予約</h2>
-      <p>ご希望の支店・日時を選び、必要事項をご入力ください。相談時間は90分です。</p>
+      <p>ご希望の支店・日時を選び、必要事項をご入力ください。</p>
+      <div class="booking-facts" aria-label="予約のご案内">
+        <div><strong>90分</strong><span>相談時間</span></div>
+        <div><strong>無料</strong><span>相談料</span></div>
+      </div>
       <div class="steps" id="steps"></div>
+      <p class="privacy-note">入力内容は相談準備とご連絡のために大切に取り扱います。</p>
     </aside>
     <section class="panel content-wrap">
       <div class="mobile-progress" id="mobileProgress"></div>

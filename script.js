@@ -152,14 +152,14 @@ function renderSteps(){
   const cur=Math.min(state.step,total);
   const pct=Math.round((cur/total)*100);
   document.getElementById("mobileProgress").innerHTML=state.step>=total?"":`
-    <span class="label">${cur+1} / ${total} ：${STEP_NAMES[cur]}</span>
+    <span class="label">STEP ${cur+1} / ${total}　${STEP_NAMES[cur]}</span>
     <div class="bar"><span style="width:${pct}%"></span></div>`;
 }
 function choiceCards(items,selected,onClick){
   return `<div class="cards">${items.map(x=>`
   <button class="choice-card ${selected===x?"selected":""}" aria-pressed="${selected===x}" onclick='${onClick}(${JSON.stringify(x)})'>
     <span class="icon">${x.slice(0,1)}</span>
-    <span><strong>${x}</strong><span>${selected===x?"選択中":"選択する"}</span></span>
+    <span><strong>${x}</strong><span>${selected===x?"選択済み":"この支店を選ぶ"}</span></span>
   </button>`).join("")}</div>`;
 }
 function showError(msg){document.getElementById("formError").textContent=msg||""}
@@ -723,8 +723,7 @@ function renderReservations(el){
       </div>
       <div class="toolbar" style="margin-bottom:0">
         <label>支店<select id="filterBranch" onchange="window._fb=this.value;renderAdmin()"><option value="">すべて</option>${BRANCHES.map(x=>`<option value="${x}" ${window._fb===x?"selected":""}>${x}</option>`).join("")}</select></label>
-        <button class="btn secondary" onclick="toggleCalendarLayout()">カレンダーを大きくする</button>
-        <button class="btn secondary" onclick="exportCsv()">CSV出力</button>
+        <button class="btn secondary toggle-layout-btn" onclick="toggleCalendarLayout()">カレンダーを大きくする</button>
       </div>
     </div>
     `}
@@ -979,15 +978,16 @@ function renderBlocks(el){
   }).join("");
 
   el.innerHTML=`
-    <h2 class="section-title">対応不可枠設定</h2>
-    <p class="section-lead">支店や担当者の都合で対応できない日時をブロックします。時間をタップ（クリック）するだけで即時反映されます。</p>
-    
-    <div class="toolbar" style="margin-bottom:16px">
-      <label>対象支店
-        <select onchange="adminBlockState.branch=this.value;renderAdmin()">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:18px">
+      <div>
+        <h2 class="section-title" style="margin-bottom:0">対応不可枠設定</h2>
+        <p class="section-lead" style="margin-top:4px;margin-bottom:0">対応不可日時を設定できます。</p>
+      </div>
+      <div class="toolbar" style="margin-bottom:0">
+        <label>支店<select onchange="adminBlockState.branch=this.value;renderAdmin()">
           ${BRANCHES.map(x=>`<option value="${x}" ${x===branch?"selected":""}>${x}</option>`).join("")}
-        </select>
-      </label>
+        </select></label>
+      </div>
     </div>
 
     <div class="block-admin-layout">
@@ -1218,7 +1218,10 @@ function renderSettings(el){
       </div>
     </div>
     <div class="notice" style="margin-top:18px">土曜日・日曜日・登録済みの祝日は常に予約不可です。</div>
-    <div class="actions" style="justify-content:flex-end"><button class="btn primary" onclick="saveAdminSettings()">設定を保存</button></div>`;
+    <div class="actions" style="justify-content:space-between">
+      <button class="btn secondary" onclick="exportCsv()">予約データをCSV出力</button>
+      <button class="btn primary" onclick="saveAdminSettings()">設定を保存</button>
+    </div>`;
 }
 function addAssigneeRow(branch) {
   const container = document.querySelector(`#assignees_container_${branch} .assignee-list`);
