@@ -33,15 +33,15 @@
         <button class="btn secondary compact-btn" onclick="toggleCalendarLayout()">横並び表示にする</button>
       </div>
       <div class="mode-switch" id="mainModeSwitch">
-        <button id="adminModeBtn">管理画面</button>
-        <button id="userModeBtn" class="active">予約画面</button>
+        <button id="adminModeBtn" class="active">管理画面</button>
+        <button id="userModeBtn">予約画面</button>
       </div>
     </div>
   </div>
 </header>
 
 <main>
-<section id="userApp">
+<section id="userApp" style="display:none">
   <div class="booking-wrap">
     <aside class="panel side">
       <span class="side-kicker">相続のご相談</span>
@@ -61,7 +61,7 @@
   </div>
 </section>
 
-<section id="adminApp" class="admin">
+<section id="adminApp" class="admin" style="display:block">
   <div class="admin-header-menu">
     <button class="active" data-admin="reservations">予約一覧</button>
     <button data-admin="blocks">対応不可枠設定</button>

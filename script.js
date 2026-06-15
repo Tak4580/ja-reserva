@@ -1310,3 +1310,4 @@ document.getElementById("adminModeBtn").onclick=()=>{
 };
 
 renderBooking();
+renderAdmin();
