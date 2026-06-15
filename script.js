@@ -755,7 +755,7 @@ function renderReservations(el){
       </div>
       <div class="toolbar" style="margin-bottom:0">
         <label>支店<select id="filterBranch" onchange="window._fb=this.value;renderAdmin()"><option value="">すべて</option>${BRANCHES.map(x=>`<option value="${x}" ${window._fb===x?"selected":""}>${x}</option>`).join("")}</select></label>
-        <button class="btn secondary toggle-layout-btn" onclick="toggleCalendarLayout()">カレンダーを大きくする</button>
+        <button class="btn secondary toggle-layout-btn" onclick="toggleCalendarLayout()">拡大表示</button>
       </div>
     </div>
     `}
