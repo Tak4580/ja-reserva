@@ -25,7 +25,7 @@ const HOLIDAYS=new Set([...HOLIDAYS_2024,...HOLIDAYS_2025,...HOLIDAYS_2026,...HO
 
 const state={
   step:0, branch:"", date:"", time:"",
-  customer:{name:"",kana:"",phone:""},
+  customer:{name:"",kana:"",phone:"",lastName:"",firstName:"",lastKana:"",firstKana:""},
   visitCount:"1",
   details:{
     deceasedName:"",deceasedAddress:"",deceasedBirth:"",deceasedDeath:"",
@@ -228,10 +228,16 @@ function renderBooking(){
       <p class="section-lead">ご連絡可能なお名前、フリガナ、電話番号を入力してください。</p>
       <div class="grid two">
         <label>お名前 <span class="required">必須</span>
-          <input id="customerName" value="${esc(state.customer.name)}" placeholder="例：山田 太郎">
+          <div style="display:flex; gap:10px;">
+            <input id="customerLastName" value="${esc(state.customer.lastName)}" placeholder="姓（例：山田）">
+            <input id="customerFirstName" value="${esc(state.customer.firstName)}" placeholder="名（例：太郎）">
+          </div>
         </label>
         <label>フリガナ（カタカナ） <span class="required">必須</span>
-          <input id="customerKana" value="${esc(state.customer.kana)}" placeholder="例：ヤマダ タロウ">
+          <div style="display:flex; gap:10px;">
+            <input id="customerLastKana" value="${esc(state.customer.lastKana)}" placeholder="セイ（例：ヤマダ）" onblur="formatKanaInput(this)">
+            <input id="customerFirstKana" value="${esc(state.customer.firstKana)}" placeholder="メイ（例：タロウ）" onblur="formatKanaInput(this)">
+          </div>
         </label>
         <label>電話番号 <span class="required">必須</span>
           <input id="customerPhone" value="${esc(state.customer.phone)}" placeholder="例：090-1234-5678" inputmode="tel" oninput="formatPhoneInput(this)">
@@ -371,12 +377,41 @@ function formatPhoneInput(input) {
     }
   }
 }
+function toZenkakuKatakana(str) {
+  const kanaMap = {
+    'ｶﾞ':'ガ','ｷﾞ':'ギ','ｸﾞ':'グ','ｹﾞ':'ゲ','ｺﾞ':'ゴ','ｻﾞ':'ザ','ｼﾞ':'ジ','ｽﾞ':'ズ','ｾﾞ':'ゼ','ｿﾞ':'ゾ',
+    'ﾀﾞ':'ダ','ﾁﾞ':'ヂ','ﾂﾞ':'ヅ','ﾃﾞ':'デ','ﾄﾞ':'ド','ﾊﾞ':'バ','ﾋﾞ':'ビ','ﾌﾞ':'ブ','ﾍﾞ':'ベ','ﾎﾞ':'ボ',
+    'ﾊﾟ':'パ','ﾋﾟ':'ピ','ﾌﾟ':'プ','ﾍﾟ':'ペ','ﾎﾟ':'ポ','ｳﾞ':'ヴ',
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ','ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ','ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ','ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ','ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ','ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ',
+    'ﾜ':'ワ','ｦ':'ヲ','ﾝ':'ン','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｯ':'ッ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ',
+    'ｰ':'ー'
+  };
+  let reg = new RegExp('(' + Object.keys(kanaMap).join('|') + ')', 'g');
+  let res = str.replace(reg, match => kanaMap[match]);
+  return res.replace(/[\u3041-\u3096]/g, match => String.fromCharCode(match.charCodeAt(0) + 0x60));
+}
+function formatKanaInput(input) {
+  if(input) input.value = toZenkakuKatakana(input.value);
+}
 function saveCustomer(){
-  state.customer.name=document.getElementById("customerName").value.trim();
-  state.customer.kana=document.getElementById("customerKana").value.trim();
+  const lk = document.getElementById("customerLastKana");
+  const fk = document.getElementById("customerFirstKana");
+  if(lk) formatKanaInput(lk);
+  if(fk) formatKanaInput(fk);
+
+  state.customer.lastName=document.getElementById("customerLastName").value.trim();
+  state.customer.firstName=document.getElementById("customerFirstName").value.trim();
+  state.customer.lastKana=document.getElementById("customerLastKana").value.trim();
+  state.customer.firstKana=document.getElementById("customerFirstKana").value.trim();
   state.customer.phone=document.getElementById("customerPhone").value.trim();
-  if(!state.customer.name)return showError("お名前を入力してください。");
-  if(!state.customer.kana)return showError("フリガナを入力してください。");
+  
+  state.customer.name=`${state.customer.lastName} ${state.customer.firstName}`.trim();
+  state.customer.kana=`${state.customer.lastKana} ${state.customer.firstKana}`.trim();
+  if(!state.customer.lastName || !state.customer.firstName)return showError("お名前（姓名）を入力してください。");
+  if(!state.customer.lastKana || !state.customer.firstKana)return showError("フリガナ（セイメイ）を入力してください。");
   if(!/^[ァ-ヶー\s　]+$/.test(state.customer.kana))return showError("フリガナは全角カタカナで入力してください。");
   if(!/^[0-9\-+() ]{8,20}$/.test(state.customer.phone))return showError("電話番号を正しく入力してください。");
   nextStep();
@@ -445,7 +480,7 @@ function submitReservation(){
 function resetBooking(){
   Object.assign(state,{
     step:0,branch:"",date:"",time:"",
-    customer:{name:"",kana:"",phone:""},visitCount:"1",
+    customer:{name:"",kana:"",phone:"",lastName:"",firstName:"",lastKana:"",firstKana:""},visitCount:"1",
     details:{deceasedName:"",deceasedAddress:"",deceasedBirth:"",deceasedDeath:"",relation:"",will:"",agreement:"",notes:""},
     calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1),
     editingId: null, completedId: null, justModified: false
@@ -517,6 +552,16 @@ function viewMyReservation() {
     state.date = r.date;
     state.time = r.time;
     state.customer = {...r.customer};
+    if(!state.customer.lastName && state.customer.name){
+      const parts = state.customer.name.split(/[\s　]+/);
+      state.customer.lastName = parts[0] || "";
+      state.customer.firstName = parts.slice(1).join(" ") || "";
+    }
+    if(!state.customer.lastKana && state.customer.kana){
+      const parts = state.customer.kana.split(/[\s　]+/);
+      state.customer.lastKana = parts[0] || "";
+      state.customer.firstKana = parts.slice(1).join(" ") || "";
+    }
     state.visitCount = r.visitCount;
     state.details = {...r.details};
   }
@@ -697,6 +742,10 @@ function saveReservationEdit(id) {
 
   r.service = getVal(`edit-service-${id}`);
   if(!r.customer) r.customer = {};
+  
+  const kanaInput = document.getElementById(`edit-kana-${id}`);
+  if(kanaInput) formatKanaInput(kanaInput);
+
   r.customer.name = getVal(`edit-name-${id}`);
   r.customer.kana = getVal(`edit-kana-${id}`);
   r.customer.phone = getVal(`edit-phone-${id}`);
@@ -788,7 +837,7 @@ function renderReservations(el){
                 <div><dt>予約番号</dt><dd>${r.id}</dd></div>
                 <div><dt>相談内容</dt><dd><input id="edit-service-${r.id}" value="${esc(r.service||"相続相談")}"></dd></div>
                 <div><dt>氏名</dt><dd><input id="edit-name-${r.id}" value="${esc(r.customer.name)}"></dd></div>
-                <div><dt>フリガナ</dt><dd><input id="edit-kana-${r.id}" value="${esc(r.customer.kana)}"></dd></div>
+                <div><dt>フリガナ</dt><dd><input id="edit-kana-${r.id}" value="${esc(r.customer.kana)}" onblur="formatKanaInput(this)"></dd></div>
                 <div><dt>電話番号</dt><dd><input id="edit-phone-${r.id}" value="${esc(r.customer.phone)}"></dd></div>
                 <div><dt>来店回数</dt><dd><select id="edit-vc-${r.id}"><option value="1" ${r.visitCount==="1"?"selected":""}>初回</option><option value="2" ${r.visitCount==="2"?"selected":""}>2回目以降</option></select></dd></div>
                 ${r.visitCount==="1"?`
