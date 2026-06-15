@@ -191,6 +191,12 @@ function renderBooking(){
           1営業日前の15時を過ぎているため、${jpDate(state.date)}のご予約はWEBから受付できません。<br>
           該当日程の来店をご希望の場合は、恐れ入りますが直接 <strong>${state.branch}（TEL: ${esc(phone)}）</strong> までお電話にてご連絡ください。
         </div>`;
+      } else {
+        const allFull = TIMES.every(t=>isTimeUnavailable(state.branch,state.date,t,state.editingId));
+        if (allFull) {
+          isBlocked = true;
+          warningMsg = `<div class="notice" style="margin-top:18px">※この日はご予約いただける時間がありません。別の日程をお選びください。</div>`;
+        }
       }
     }
 
@@ -206,14 +212,14 @@ function renderBooking(){
     el.innerHTML=`
       <h2 class="section-title">時間を選択</h2>
       <p class="section-lead">${jpDate(state.date)}／相談時間90分</p>
-      ${allFull?`<div class="empty-note">この日はすべての時間帯が予約済みです。別の日程をお選びください。</div>`:`
+      ${allFull?`<div class="notice" style="margin-top:18px">※この日はご予約いただける時間がありません。別の日程をお選びください。</div>`:`
       <div class="times">${TIMES.map(t=>{
         const disabled=isTimeUnavailable(state.branch,state.date,t,state.editingId);
         const mark = disabled ? "×" : "◯";
         return `<button class="time-btn ${state.time===t?"selected":""}" aria-pressed="${state.time===t}" ${disabled?"disabled":""} onclick='selectTime("${t}")'>
           ${t}<br><strong class="time-mark ${disabled?"":"mark-enabled"}">${mark}</strong><span class="muted">${disabled?"予約不可":`${t}～${endTime(t)}`}</span>
-        </button>`}).join("")}</div>`}
-      <div class="notice" style="margin-top:18px">予約が入っている時間と90分の相談時間が重なる場合、その開始時間は選択できません。</div>
+        </button>`}).join("")}</div>
+      <div class="notice" style="margin-top:18px">※空いている時間を選択してください。</div>`}
       <div id="formError" class="error"></div>
       <div class="actions"><button class="btn secondary" onclick="prevStep()">戻る</button>${allFull?"":`<button class="btn primary" onclick="goFromTime()">お客様情報へ</button>`}</div>`;
   }else if(state.step===3){
@@ -340,6 +346,10 @@ function goFromDate(){
   if (isDeadlinePassed(state.date)) {
     return showError("1営業日前の15時を過ぎているため、該当日程のご予約は直接支店へお電話ください。");
   }
+  const allFull = TIMES.every(t=>isTimeUnavailable(state.branch,state.date,t,state.editingId));
+  if (allFull) {
+    return showError("この日はご予約いただける時間がありません。別の日程をお選びください。");
+  }
   nextStep();
 }
 function selectTime(t){state.time=t;renderBooking()}
@@ -449,13 +459,35 @@ function renderCalendar(){
   const today=new Date();today.setHours(0,0,0,0);
   const todayIso=formatDateISO(today);
   const currentMonthStart=new Date(today.getFullYear(),today.getMonth(),1);
+
+  // 予約とブロックを一括取得（カレンダー表示の高速化）
+  const allRes = getReservations().filter(r => r.branch === state.branch && r.status !== "キャンセル" && r.id !== state.editingId);
+  const allBlk = getBlocks().filter(b => b.branch === state.branch);
+  const isTimeUnavailableLocal = (date, time) => {
+    const start = minutes(time);
+    if(allRes.some(r => r.date === date && overlaps(start, 90, minutes(r.time), 90))) return true;
+    if(allBlk.some(b => b.date === date && overlaps(start, 90, minutes(b.start), Number(b.duration||30)))) return true;
+    return false;
+  };
+
   let cells=[];
   for(let i=0;i<first.getDay();i++)cells.push(`<div></div>`);
   for(let d=1;d<=last.getDate();d++){
     const iso=formatDateISO(new Date(y,mo,d));
     const enabled=isBookableDate(iso);
     const isToday=iso===todayIso;
-    cells.push(`<button class="day ${enabled?"enabled":"disabled"} ${state.date===iso?"selected":""} ${isToday?"today":""}" ${enabled?"":'disabled'} aria-label="${y}年${mo+1}月${d}日${enabled?"":"（予約不可）"}" onclick='pickDate("${iso}")'>${d}</button>`);
+    
+    let isFull = false;
+    if (enabled) {
+      isFull = TIMES.every(t => isTimeUnavailableLocal(iso, t));
+    }
+
+    // 満枠の場合は見た目を非アクティブ(disabled)にしつつ、クリック可能にする
+    const displayClass = (enabled && !isFull) ? "enabled" : "disabled";
+    const disabledAttr = enabled ? "" : "disabled";
+    const extraStyle = (enabled && isFull) ? 'style="pointer-events: auto; cursor: pointer;"' : '';
+
+    cells.push(`<button class="day ${displayClass} ${state.date===iso?"selected":""} ${isToday?"today":""}" ${disabledAttr} aria-label="${y}年${mo+1}月${d}日${enabled?(isFull?"（満枠）":""):"（予約不可）"}" ${extraStyle} onclick='pickDate("${iso}")'>${d}</button>`);
   }
   const atMinMonth=new Date(y,mo,1)<=currentMonthStart;
   return `<div class="calendar">
