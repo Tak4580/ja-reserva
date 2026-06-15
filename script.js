@@ -1113,7 +1113,7 @@ function renderBlocks(el){
   el.innerHTML=`
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:18px">
       <div>
-        <h2 class="section-title" style="margin-bottom:0">対応不可枠設定</h2>
+        <h2 class="section-title" style="margin-bottom:0">予約枠設定</h2>
         <p class="section-lead" style="margin-top:4px;margin-bottom:0">対応不可日時を設定できます。</p>
       </div>
       <div class="toolbar" style="margin-bottom:0">
