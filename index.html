@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>相続相談 来店予約システム</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="logo">JA</div>
+      <div>
+        <h1>相続相談 来店予約</h1>
+        <small>LINE連携対応 初期版</small>
+      </div>
+    </div>
+    <div id="headerMonthControls" class="header-month-controls">
+      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:16px; line-height:1;" onclick="moveAdminReservationMonth(-1)">‹</button>
+      <strong id="headerMonthLabel" style="font-size:16px;"></strong>
+      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:16px; line-height:1;" onclick="moveAdminReservationMonth(1)">›</button>
+      <button class="btn secondary" style="padding:4px 12px; border-radius:6px; font-size:13px; line-height:1.2; margin-left:8px;" onclick="resetAdminReservationMonth()">今日に戻る</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div id="calendarLargeControls" style="display:none; align-items:center; gap:10px;">
+        <label style="margin:0; font-size:13px; display:flex; align-items:center; gap:6px; font-weight:700;">支店
+          <select id="headerFilterBranch" onchange="window._fb=this.value;renderAdmin()" style="padding:6px 10px; font-size:13px; border-radius:6px; min-height:auto; border:1px solid var(--line); background:#fff;">
+          </select>
+        </label>
+        <button class="btn secondary" style="padding:6px 12px; font-size:12px; border-radius:6px;" onclick="toggleCalendarLayout()">横並び表示にする</button>
+      </div>
+      <div class="mode-switch" id="mainModeSwitch">
+        <button id="userModeBtn" class="active">予約画面</button>
+        <button id="adminModeBtn">支店管理</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="userApp">
+  <div class="booking-wrap">
+    <aside class="panel side">
+      <h2>相続相談のご予約</h2>
+      <p>ご希望の支店・日時を選び、必要事項をご入力ください。相談時間は90分です。</p>
+      <div class="steps" id="steps"></div>
+    </aside>
+    <section class="panel content-wrap">
+      <div class="mobile-progress" id="mobileProgress"></div>
+      <div class="content" id="bookingContent"></div>
+    </section>
+  </div>
+</section>
+
+<section id="adminApp" class="admin">
+  <div class="admin-header-menu">
+    <button class="active" data-admin="reservations">予約一覧</button>
+    <button data-admin="blocks">対応不可枠設定</button>
+    <button data-admin="settings">基本設定</button>
+  </div>
+  <section class="panel admin-content" id="adminContent"></section>
+</section>
+</main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
