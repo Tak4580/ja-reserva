@@ -1092,7 +1092,7 @@ function renderBlocks(el){
             <button class="btn secondary" style="padding:6px 12px;font-size:12px;border-radius:6px" onclick="setBlockPreset('clear')">すべて可</button>
             <button class="btn secondary" style="padding:6px 12px;font-size:12px;border-radius:6px" onclick="setBlockPreset('am')">午前不可</button>
             <button class="btn secondary" style="padding:6px 12px;font-size:12px;border-radius:6px" onclick="setBlockPreset('pm')">午後不可</button>
-            <button class="btn danger" style="padding:6px 12px;font-size:12px;border-radius:6px" onclick="setBlockPreset('all')">終日不可</button>
+            <button class="btn secondary" style="padding:6px 12px;font-size:12px;border-radius:6px" onclick="setBlockPreset('all')">終日不可</button>
           </div>
           ` : ""}
         </div>
